@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -24,6 +26,7 @@ type EmailContent struct {
 func main() {
 
 	var emailsContent []EmailContent
+	apiUrl := "https://graph.facebook.com/v18.0/251779804685576/messages"
 	ctx := context.Background()
 	gmailService := createGmailService(ctx)
 	emails := getEmails(ctx, gmailService, emailsContent)
@@ -32,8 +35,49 @@ func main() {
 		fmt.Println("Subject: ", email.Subject)
 		fmt.Println("Body: ", email.Body)
 		fmt.Println("---------------------------------------------------")
+		message := map[string]interface{}{
+			"messaging_product": "whatsapp",
+			"recipient_type":    "individual",
+			"to":                "5585986566632",
+			"type":              "text",
+			"text": map[string]interface{}{
+				"body": email.Body,
+			},
+		}
+		jsonMessage, err := json.Marshal(message)
+		if err != nil {
+			fmt.Println("Error marshalling message: ", err)
+		}
+		request, _ := http.NewRequest("POST", apiUrl, bytes.NewBuffer(jsonMessage))
+		request.Header.Set("Authorization", "Bearer EAAEfy2v4qCsBOyjhaDgZCOz1fLoFBxJbPLPZAqYhcfQqDNOO84WxizGYV8CZBzQeVW3x5LYeDRPnIlvW9t4bUcJ6FyttFGIOOxnQxZBxjZCAv2iMWd56nTevOySu0mlPMpZCTGwoW88zYZAziEj1RT19oLqVQwaGvSpAnbwKebTBCWHEzyaZC4bPaYj6uxzSKb2UDakBKEYjnBPHJ030VJcZD")
+		request.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		response, error := client.Do(request)
+		if error != nil {
+			fmt.Println("Error sending message: ", error)
+		}
+		responseBody, error := io.ReadAll(response.Body)
+		if error != nil {
+			fmt.Println(error)
+		}
+		formattedData := formatJSON(responseBody)
+		fmt.Println("Status: ", response.Status)
+		fmt.Println("Response body: ", formattedData)
+
+		// clean up memory after execution
+		defer response.Body.Close()
+	}
+}
+func formatJSON(data []byte) string {
+	var out bytes.Buffer
+	err := json.Indent(&out, data, "", " ")
+
+	if err != nil {
+		fmt.Println(err)
 	}
 
+	d := out.Bytes()
+	return string(d)
 }
 
 func getEmails(ctx context.Context, gmailService *gmail.Service, emailsContent []EmailContent) []EmailContent {
