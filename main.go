@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/k3a/html2text"
 	"golang.org/x/oauth2"
@@ -24,7 +25,6 @@ type EmailContent struct {
 }
 
 func main() {
-
 	var emailsContent []EmailContent
 	apiUrl := "https://graph.facebook.com/v18.0/251779804685576/messages"
 	ctx := context.Background()
@@ -81,7 +81,8 @@ func formatJSON(data []byte) string {
 }
 
 func getEmails(ctx context.Context, gmailService *gmail.Service, emailsContent []EmailContent) []EmailContent {
-	query := "is:unread from:(si3_admin_noreply@ufc.br) after:2024/3/8 before:2024/3/11"
+	query := "is:unread from:(si3_admin_noreply@ufc.br) after:" + time.Now().AddDate(0, 0, -1).Format("2006/01/02") + " before:" + time.Now().Format("2006/01/02")
+	fmt.Println("Query: ", query)
 	emails, err := gmailService.Users.Messages.List("me").Q(query).Context(ctx).Do()
 	if err != nil {
 		fmt.Println("Error getting messages: ", err)
